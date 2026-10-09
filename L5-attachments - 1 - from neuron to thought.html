@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From neuron to thought</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:#080b14;color:#e8ecf8;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:flex;flex-direction:column}
+canvas{flex:1;width:100%;min-height:0;display:block}
+#cap{padding:10px 18px 4px;text-align:center}
+#cap h1{margin:0;font-size:clamp(18px,3.4vw,26px);color:#7fd1ff}
+#cap p{margin:6px auto 0;max-width:760px;font-size:clamp(14px,2.4vw,18px);line-height:1.4;color:#cfd6ee}
+#bar{height:4px;background:#1a2036;margin:8px 18px}
+#bar i{display:block;height:100%;width:0;background:#7fd1ff}
+#ctl{display:flex;gap:8px;justify-content:center;padding:4px 12px 14px;flex-wrap:wrap}
+button{background:#1a2036;color:#e8ecf8;border:1px solid #33406b;border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer}
+button.on{background:#2a4a8a}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="cap"><h1 id="t"></h1><p id="s"></p></div>
+<div id="bar"><i id="p"></i></div>
+<div id="ctl"><button id="pp">Pause</button><button data-s="0">1 · One neuron</button><button data-s="1">2 · Network forms</button><button data-s="2">3 · Senses to thought</button></div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+let W=0,H=0;
+function rs(){const d=devicePixelRatio||1,r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0);init2()}
+addEventListener('resize',rs);
+const D=[28,32,24],TXT=[
+["1 · One neuron: signals in, signal out","Dendrites receive many small inputs. The cell body adds them up. Only when the total passes a threshold does the neuron fire one pulse down its axon to the next cells."],
+["2 · A small network: information flows through","Sensory signals enter the first neurons. Each cell adds up what its dendrites receive and fires along its axon to the next cells, until the last neuron sends the result out."],
+["3 · The same idea as an artificial neural network","Features go in. Each layer takes a weighted sum of the layer before and passes it on. The output layer gives a probability per answer, so the network 'thinks' apple, banana or lemon. Brains do this with billions of neurons that learn their own weights."]];
+let sc=0,st=0,play=true,last=performance.now();
+const R=(a,b)=>a+Math.random()*(b-a);
+const glow=(px,py,r,a,col)=>{const g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,`rgba(${col},${a})`);g.addColorStop(1,`rgba(${col},0)`);x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,7);x.fill()};
+const line=(a,b,w,col)=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()};
+const lp=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];
+const lab=(s,px,py,al='center',col='#9fb0d8')=>{x.fillStyle=col;x.textAlign=al;x.font='600 13px system-ui';x.fillText(s,px,py)};
+
+/* Scene 1 */
+let in1=[],pot=0,sp=-1,spawn=0,outG=0;
+function s1(dt){
+ const so=[W*.5,H*.5],sr=Math.min(W,H)*.07;
+ const tips=[0,1,2,3,4].map(i=>[W*.08,H*(.14+i*.18)]);
+ const tm=[0,1,2].map(i=>[W*.9,H*(.3+i*.2)]),ax=[W*.78,H*.5];
+ spawn-=dt;if(spawn<=0){spawn=.8;in1.push({k:Math.floor(R(0,5)),u:0})}
+ pot=Math.max(0,pot-.08*dt);
+ in1.forEach(p=>{p.u+=dt/1.3;if(p.u>=1&&!p.d){p.d=1;pot+=.25}});in1=in1.filter(p=>p.u<1);
+ if(pot>=1&&sp<0){sp=0;pot=0}
+ if(sp>=0){sp+=dt/1.6;if(sp>=1){sp=-1;outG=1}}
+ outG=Math.max(0,outG-dt*.7);
+ tips.forEach(t=>{const m=lp(t,so,.5);m[1]+=(t[1]-so[1])*.1;line(t,m,2,'#3b5aa8');line(m,so,3,'#3b5aa8')});
+ line(so,ax,5,'#3b5aa8');tm.forEach(t=>line(ax,t,2,'#3b5aa8'));
+ glow(so[0],so[1],sr*2.4,.15+pot*.5+(sp>=0?.3:0),'127,209,255');
+ x.fillStyle='#16224a';x.strokeStyle='#7fd1ff';x.lineWidth=2;x.beginPath();x.arc(so[0],so[1],sr,0,7);x.fill();x.stroke();
+ in1.forEach(p=>{const t=tips[p.k],m=lp(t,so,.5);m[1]+=(t[1]-so[1])*.1;const q=p.u<.5?lp(t,m,p.u*2):lp(m,so,p.u*2-1);glow(q[0],q[1],14,1,'255,200,90')});
+ if(sp>=0){const q=sp<.5?lp(so,ax,sp*2):null;if(q)glow(q[0],q[1],24,1,'127,255,190');else tm.forEach(t=>{const r=lp(ax,t,sp*2-1);glow(r[0],r[1],18,1,'127,255,190')})}
+ tm.forEach(t=>glow(t[0],t[1],26,outG,'127,255,190'));
+ const bx=so[0]-sr,by=so[1]+sr*1.6,bw=sr*2;x.strokeStyle='#33406b';x.strokeRect(bx,by,bw,10);x.fillStyle=pot>.8?'#ffb35a':'#7fd1ff';x.fillRect(bx,by,bw*Math.min(pot,1),10);
+ line([bx+bw,by-3],[bx+bw,by+13],2,'#ff6b8a');
+ lab('INPUTS (dendrites)',W*.08,H*.06,'left');lab('CELL BODY',so[0],so[1]-sr*1.5);lab('adds up inputs · threshold',so[0],by+28);lab('OUTPUT (axon)',W*.92,H*.06,'right');
+}
+
+/* Scene 2: small network with visible information flow */
+const NP=[[.12,.28],[.12,.72],[.37,.17],[.37,.5],[.37,.83],[.62,.3],[.62,.7],[.84,.5]];
+const EG=[[0,2],[0,3],[1,3],[1,4],[2,5],[3,5],[3,6],[4,6],[5,7],[6,7]];
+const SEQ=[[0,1],[0],[1],[0,1]];
+let NN=[],ED=[],P=[],inj=.5,sq=0,T2=0;
+function init2(){NN=NP.map(p=>({x:p[0],y:p[1],v:0,g:0,lf:-9}));ED=EG.map(e=>({a:e[0],b:e[1],w:R(.55,.8)}));P=[];inj=.5;sq=0;in1=[];pot=0;sp=-1}
+function fire2(i){const n=NN[i];n.g=1;n.v=0;n.lf=T2;ED.forEach(e=>{if(e.a==i)P.push({e,u:0});if(e.b==i&&T2-NN[e.a].lf<1.3)e.w=Math.min(1.3,e.w+.05)});if(i==7)P.push({out:1,u:0})}
+function arr(a,b,w,col){line(a,b,w,col);const an=Math.atan2(b[1]-a[1],b[0]-a[0]);x.fillStyle=col;x.beginPath();x.moveTo(b[0],b[1]);x.lineTo(b[0]-8*Math.cos(an-.4),b[1]-8*Math.sin(an-.4));x.lineTo(b[0]-8*Math.cos(an+.4),b[1]-8*Math.sin(an+.4));x.fill()}
+function s2(dt,tt){
+ T2=tt;const r=Math.min(W,H)*.035,X=n=>n.x*W,Y=n=>n.y*H;
+ inj-=dt;if(inj<=0){inj=2.6;SEQ[sq++%SEQ.length].forEach((k,j)=>P.push({inp:k,u:-j*.2}))}
+ ED.forEach(e=>e.w=Math.max(.55,e.w-dt*.002));
+ const pp=p=>{if(p.e){const a=NN[p.e.a],b=NN[p.e.b];return lp([X(a)+r,Y(a)],[X(b)-r*1.7,Y(b)],p.u)}if(p.out){const a=NN[7];return lp([X(a)+r,Y(a)],[W*.97,Y(a)],p.u)}const n=NN[p.inp];return lp([W*.015,Y(n)],[X(n)-r*1.7,Y(n)],p.u)};
+ P.forEach(p=>{p.u+=dt/.8;if(p.u>=1&&!p.d){p.d=1;if(p.e)NN[p.e.b].v+=p.e.w;else if(p.inp!==undefined)NN[p.inp].v+=1}});
+ P=P.filter(p=>!p.d||p.u<1);
+ NN.forEach((n,i)=>{n.v=Math.max(0,n.v-dt*.4);n.g=Math.max(0,n.g-dt*1.3);if(n.v>=.55&&T2-n.lf>.5)fire2(i)});
+ ED.forEach(e=>{const a=NN[e.a],b=NN[e.b];arr([X(a)+r,Y(a)],[X(b)-r*1.7,Y(b)],1+(e.w-.5)*5,`rgba(127,209,255,${.2+(e.w-.5)*.6})`)});
+ [0,1].forEach(k=>{const n=NN[k];arr([W*.015,Y(n)],[X(n)-r*1.7,Y(n)],1.5,'rgba(255,200,90,.35)')});
+ {const n=NN[7];arr([X(n)+r,Y(n)],[W*.97,Y(n)],2,'rgba(127,255,190,.5)')}
+ NN.forEach(n=>{[-1,0,1].forEach(d=>line([X(n)-r,Y(n)+d*r*.3],[X(n)-r*1.7,Y(n)+d*r*.8],1.5,'#3b5aa8'));
+  glow(X(n),Y(n),r*2.6,.12+n.g*.8,'127,255,190');x.fillStyle='#16224a';x.strokeStyle='#7fd1ff';x.lineWidth=2;x.beginPath();x.arc(X(n),Y(n),r,0,7);x.fill();x.stroke();
+  x.fillStyle=`rgba(127,209,255,${Math.min(1,n.v/.55)*.8})`;x.beginPath();x.arc(X(n),Y(n),r*.7,0,7);x.fill()});
+ P.forEach(p=>{if(p.u<0||p.u>1)return;const q=pp(p);glow(q[0],q[1],13,1,p.out?'127,255,190':'255,200,90')});
+ lab('SENSORY INPUT',W*.015,H*.05,'left');lab('OUTPUT',W*.97,H*.05,'right');lab('thicker line = stronger connection (fire together, wire together)',W*.5,H*.97);
+}
+
+/* Scene 3: a real tiny artificial neural network (forward pass computed live) */
+const FN=["Red","Yellow","Round","Long"],ON=["Apple","Banana","Lemon"];
+const STM=[["Apple",[1,0,1,0]],["Banana",[0,1,0,1]],["Lemon",[0,1,1,0]]];
+const WT=[[[1,0,0,.5],[0,1,1,.5],[1,0,1,.5],[0,1,0,.5]],[[1.2,-.3,-.3],[-.3,1.2,-.3],[-.3,-.3,1.2],[.3,.3,.3]],[[2,-1,-1],[-1,2,-1],[-1,-1,2]]];
+const BI=[[-1,-1,-1,-.5],[0,0,0],[0,0,0]];
+function fwd(inp){const A=[inp];let a=inp;WT.forEach((M,k)=>{const o=M[0].map((_,j)=>a.reduce((s,v,i)=>s+v*M[i][j],0)+BI[k][j]);if(k<2)a=o.map(v=>Math.max(0,v));else{const m=Math.max(...o),e=o.map(v=>Math.exp(v-m)),s=e.reduce((p,q)=>p+q);a=e.map(v=>v/s)}A.push(a)});return A}
+function s3(dt,tt){
+ const ci=Math.floor(tt/8)%3,ph=tt%8,S=STM[ci],A=fwd(S[1]);
+ const wnd=i=>{const s=.3+i*1.1;return Math.max(0,Math.min(1,(ph-s)/.8))*Math.max(0,Math.min(1,(8-ph)/.6))};
+ const LX=[.17,.4,.62,.8],pos=A.map((l,i)=>l.map((_,j)=>[W*LX[i],H*(.5+(j-(l.length-1)/2)*Math.min(.16,.62/l.length))]));
+ WT.forEach((M,k)=>pos[k].forEach((a,i)=>pos[k+1].forEach((b,j)=>{const w=M[i][j],s=Math.min(1,Math.abs(w*A[k][i]))*wnd(k+1),col=w>=0?'127,209,255':'255,107,138';
+  line(a,b,.4+Math.abs(w)*1.6,`rgba(${col},${.05+Math.abs(w)*.07+s*.75})`);
+  const u=(ph-(.3+k*1.1+.4))/1;if(u>0&&u<1&&s>.2){const q=lp(a,b,u);glow(q[0],q[1],8,s,col)}})));
+ A.forEach((l,i)=>l.forEach((v,j)=>{const p=pos[i][j],a=Math.min(1,v)*wnd(i);glow(p[0],p[1],32,.08+a*.85,i==3?'255,120,150':'127,255,190');
+  x.fillStyle='#16224a';x.strokeStyle='#7fd1ff';x.lineWidth=1.5;x.beginPath();x.arc(p[0],p[1],10,0,7);x.fill();x.stroke();
+  if(i==0)lab(FN[j],p[0]-17,p[1]+4,'right',a>.5?'#fff':'#9fb0d8');
+  else if(i==3)lab(ON[j]+(wnd(3)>.5?' '+Math.round(v*100)+'%':''),p[0]+17,p[1]+4,'left',a>.5?'#fff':'#9fb0d8');
+  else if(wnd(i)>.5)lab(v.toFixed(1),p[0],p[1]-15)}));
+ ['INPUT','HIDDEN 1','HIDDEN 2','OUTPUT'].forEach((s,i)=>lab(s,W*LX[i],H*.06));
+ lab('Image shown: '+S[0]+'   (blue = positive weight, pink = negative)',W*.5,H*.12);
+ if(wnd(3)>.5){x.fillStyle='#ff8aa8';x.textAlign='center';x.font='700 '+Math.min(24,W*.045)+'px system-ui';x.fillText('\u201CThat\u2019s '+(ci==1?'a banana':ci==0?'an apple':'a lemon')+'.\u201D',W*.5,H*.94)}
+}
+const SC=[s1,s2,s3];
+function go(n){sc=n;st=0;init2();ttl()}
+function ttl(){document.getElementById('t').textContent=TXT[sc][0];document.getElementById('s').textContent=TXT[sc][1];document.querySelectorAll('[data-s]').forEach(b=>b.classList.toggle('on',+b.dataset.s==sc))}
+document.getElementById('pp').onclick=e=>{play=!play;e.target.textContent=play?'Pause':'Play'};
+document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>go(+b.dataset.s));
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;if(play){st+=dt;if(st>=D[sc])go((sc+1)%3)}
+ x.clearRect(0,0,W,H);SC[sc](play?dt:0,st);document.getElementById('p').style.width=(st/D[sc]*100)+'%';requestAnimationFrame(loop)}
+rs();ttl();requestAnimationFrame(loop);
+</script></body></html>
