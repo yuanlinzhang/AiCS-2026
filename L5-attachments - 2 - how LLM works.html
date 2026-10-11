@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>An ANN answers one word at a time</title>
+<style>
+:root{--bg:#080b14;--panel:#111a33;--line:#33406b;--txt:#e8ecf8;--dim:#9fb0d8;--blue:#7fd1ff;--org:#ffc85a;--pink:#ff8aa8}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:Calibri,"Segoe UI",system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:12px 14px 18px}
+h1{font-size:clamp(18px,3.2vw,26px);margin:4px 0 2px;color:var(--blue);text-align:center}
+#round{text-align:center;color:var(--dim);font-size:15px;margin-bottom:8px}
+.lbl{font-size:13px;color:var(--dim);margin:6px 2px 4px;text-transform:uppercase;letter-spacing:.06em}
+.row{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;min-height:64px;align-items:flex-start}
+.chip{text-align:center;border:1.5px solid var(--line);border-radius:8px;padding:4px 9px;min-width:44px}
+.chip b{display:block;font-size:18px;font-weight:600}
+.chip i{display:block;font:11px ui-monospace,Menlo,monospace;color:var(--dim);font-style:normal}
+.chip.new{border-color:var(--org);box-shadow:0 0 12px rgba(255,200,90,.5)}
+#xv{font:14px ui-monospace,Menlo,monospace;color:var(--dim);margin:6px 2px;overflow-wrap:anywhere}
+svg{width:100%;height:auto;display:block;margin:4px 0}
+#cap{min-height:3.8em;text-align:center;font-size:clamp(15px,2.6vw,19px);line-height:1.35;padding:6px 8px}
+#ans{font-size:clamp(18px,3vw,24px);min-height:34px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+#ans span.n{color:var(--org);font-weight:700}
+#note{font-size:12.5px;color:var(--dim);margin-top:10px;line-height:1.4}
+#ctl{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+button{background:#1a2036;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:15px;cursor:pointer;font-family:inherit}
+</style></head><body><main>
+<h1>How an ANN answers a question, one word at a time</h1>
+<div id="round"></div>
+<div class="lbl">Input x: the text so far, as numbers</div>
+<div class="row" id="inp"></div>
+<div id="xv"></div>
+<svg id="svg" viewBox="0 0 900 300" role="img" aria-label="Neural network"></svg>
+<div id="cap"></div>
+<div class="lbl">The answer built so far</div>
+<div id="ans"></div>
+<div id="ctl"><button id="pp">Pause</button><button id="nx">Next round</button><button id="rs">Restart</button><button id="sp">Speed: 1×</button></div>
+<div id="note">Note: The animation illustrates the process using a small, fake ANN. The input is taken as a vector of numbers.</div>
+</main>
+<script>
+const Q=["What","color","is","the","sky","?"],A=["The","sky","is","blue","."];
+const NUM={What:2061,color:3124,is:318,the:262,sky:6766,"?":30,The:464,blue:4171,".":13};
+const OUT=[[["The",.81],["It",.09],["Blue",.06],["A",.04]],
+ [["sky",.77],["color",.12],["answer",.07],["ocean",.04]],
+ [["is",.90],["looks",.05],["was",.03],["has",.02]],
+ [["blue",.86],["clear",.06],["gray",.05],["red",.03]],
+ [[".",.88],["!",.06],[",",.04],["today",.02]],
+ [["STOP",.93],["because",.04],["today",.02],["!",.01]]];
+const LAST=OUT.length-1,SB="\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089",sb=n=>String(n).split('').map(c=>SB[c]).join('');
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('svg');
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e};
+const L=[4,3,3,4],X=[70,240,410,580],Y=(i,n)=>150+(i-(n-1)/2)*62,R=19;
+const edges=[],glows=[],nodes=[];
+for(let k=0;k<3;k++)for(let a=0;a<L[k];a++)for(let b=0;b<L[k+1];b++){
+ const p=[X[k],Y(a,L[k])],q=[X[k+1],Y(b,L[k+1])];
+ edges.push({k,p,q,ln:el('line',{x1:p[0],y1:p[1],x2:q[0],y2:q[1],stroke:'#7fd1ff','stroke-width':1.3,opacity:.08}),pu:el('circle',{r:3.5,fill:'#ffc85a',opacity:0})})}
+L.forEach((n,k)=>{glows[k]=[];nodes[k]=[];for(let i=0;i<n;i++){
+ glows[k][i]=el('circle',{cx:X[k],cy:Y(i,n),r:28,fill:'#7fffbe',opacity:0});
+ nodes[k][i]=el('circle',{cx:X[k],cy:Y(i,n),r:k?R:11,fill:'#16224a',stroke:'#7fd1ff','stroke-width':2});
+ if(k){const t=el('text',{x:X[k]-1,y:Y(i,n)+5,fill:'#e8ecf8','font-size':16,'font-style':'italic','text-anchor':'middle','font-family':'Calibri,Segoe UI,sans-serif'});
+  t.textContent='f'+k+(i+1);t.textContent='f'+sb(k)+sb(i+1)}}});
+el('text',{x:14,y:158,fill:'#cfd6ee','font-size':24,'font-style':'italic','font-family':'Calibri,Segoe UI,sans-serif'}).textContent='x';
+const ow=[],ob=[],op=[];
+for(let j=0;j<4;j++){const y=Y(j,4);
+ ow[j]=el('text',{x:620,y:y+5,fill:'#cfd6ee','font-size':17,'font-family':'Calibri,Segoe UI,sans-serif'});
+ el('rect',{x:725,y:y-7,width:110,height:14,rx:3,fill:'#1a2036'});
+ ob[j]=el('rect',{x:725,y:y-7,width:0,height:14,rx:3,fill:'#7fd1ff'});
+ op[j]=el('text',{x:890,y:y+5,fill:'#9fb0d8','font-size':13,'text-anchor':'end','font-family':'Calibri,Segoe UI,sans-serif',opacity:0})}
+const ST=[4,7.5,11.5,17],WIN=22,T=27,cl=v=>Math.max(0,Math.min(1,v));
+let SP=1,s=0,t=0,play=true,done=false,last=performance.now(),built=-1;
+const $=id=>document.getElementById(id);
+const chip=(w,cls)=>`<div class="chip ${cls||''}"><b>${w}</b><i>${w==='STOP'?'end':NUM[w]}</i></div>`;
+const sent=a=>a.join(' ').replace(/ \./g,'.');
+function build(){built=s;
+ const tok=Q.concat(A.slice(0,s));
+ $('inp').innerHTML=tok.map((w,i)=>chip(w,i==tok.length-1&&s>0?'new':'')).join('');
+ $('xv').textContent='x = ('+tok.map(w=>NUM[w]).join(', ')+')';
+ $('round').textContent=`Round ${s+1} of ${LAST+1}`;
+ OUT[s].forEach((o,j)=>{ow[j].textContent=o[0];op[j].textContent=Math.round(o[1]*100)+'%'})}
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+ if(built!==s)build();
+ if(play&&!done){t+=dt*SP;if(t>=T){if(s<LAST){s++;t=0}else{done=true;play=false;$('pp').textContent='Replay'}}}
+ const a=k=>cl((t-ST[k])/1.5);
+ edges.forEach(e=>{const u=(t-ST[e.k]-.3)/2.2;e.ln.setAttribute('opacity',.08+.5*a(e.k+1));
+  if(u>0&&u<1){e.pu.setAttribute('cx',e.p[0]+(e.q[0]-e.p[0])*u);e.pu.setAttribute('cy',e.p[1]+(e.q[1]-e.p[1])*u);e.pu.setAttribute('opacity',.9)}else e.pu.setAttribute('opacity',0)});
+ const win=t>WIN;
+ L.forEach((n,k)=>{for(let i=0;i<n;i++){const hot=k==3&&i==0&&win;
+  glows[k][i].setAttribute('opacity',(.12+.7*a(k))*(k==3&&i&&win?.3:1));
+  glows[k][i].setAttribute('fill',hot?'#ff8aa8':'#7fffbe')}});
+ OUT[s].forEach((o,j)=>{const g=cl((t-ST[3])/1.5);ob[j].setAttribute('width',110*o[1]*g);op[j].setAttribute('opacity',g);
+  const h=win&&j==0;ow[j].setAttribute('fill',h?'#ffc85a':'#cfd6ee');ow[j].setAttribute('font-weight',h?700:400);ob[j].setAttribute('fill',h?'#ffc85a':'#7fd1ff')});
+ const w=OUT[s][0][0],stop=s==LAST;let c;
+ if(t<4)c=s==0?'Each word of the question is replaced by a number. Together the numbers form the input x.':'The new word is added to the text. Its number joins the list, so we get a new, longer input x.';
+ else if(t<7.5)c='The numbers x go into the ANN, which treats them as the input of a function.';
+ else if(t<11.5)c='Layer 1: each neuron is a function of x, namely f\u2081\u2081(x), f\u2081\u2082(x), f\u2081\u2083(x).';
+ else if(t<17)c='Layer 2: each neuron is a function of the layer-1 results, for example f\u2082\u2081( f\u2081\u2081(x), f\u2081\u2082(x), f\u2081\u2083(x) ). This is a composition of functions.';
+ else if(t<WIN)c='Layer 3: one neuron for each candidate word, f\u2083\u2081 to f\u2083\u2084, gives that word a score. Layer 3 is applied after layer 2, which is applied after layer 1.';
+ else c=stop?'The highest score belongs to STOP, so the answer is finished.':`The highest score belongs to \u201C${w}\u201D, so it is selected. Add it to the text to get a new x, then use the ANN again.`;
+ $('cap').textContent=c;
+ let ans=sent(A.slice(0,s));
+ if(win&&!stop)ans+=(w=='.'?'':(ans?' ':''))+`<span class="n">${w}</span>`;
+ if(win&&stop)ans=sent(A)+' <span class="n">[STOP]</span>';
+ if(ans!==$('ans').dataset.v){$('ans').innerHTML=ans||'&nbsp;';$('ans').dataset.v=ans}
+ requestAnimationFrame(frame)}
+$('pp').onclick=()=>{if(done){s=0;t=0;done=false;play=true;$('pp').textContent='Pause';return}play=!play;$('pp').textContent=play?'Pause':'Play'};
+$('nx').onclick=()=>{if(s<LAST){s++;t=0;done=false}};
+$('rs').onclick=()=>{s=0;t=0;done=false;play=true;$('pp').textContent='Pause'};
+$('sp').onclick=()=>{SP=SP==1?.6:SP==.6?1.6:1;$('sp').textContent='Speed: '+(SP==1?'1':SP==.6?'0.6':'1.6')+'×'};
+requestAnimationFrame(frame);
+</script></body></html>
