@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From the ISF to the definition of a function</title>
+<style>
+:root{--blue:#2b2bff;--ink:#000}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:Calibri,Carlito,"Segoe UI",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:14px 16px 20px}
+.page{padding:18px 22px;font-size:clamp(11px,2.7vw,21px);line-height:1.6;min-height:clamp(220px,40vw,330px)}
+.ind{padding-left:2em}
+#pll{white-space:nowrap}
+.v{color:var(--blue)}
+.hide{opacity:0}
+.page div{transition:opacity .6s}
+#ovar{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;max-width:0;opacity:0;transition:max-width .7s,opacity .7s}
+#ovar.show{max-width:6em;opacity:1}
+@keyframes fl{0%,100%{background:transparent}30%,70%{background:#ffe45c}}
+.flash{border-radius:4px;animation:fl .45s 3}
+#ctl{text-align:center;margin-top:6px}
+button{background:#f2f4fa;color:#222;border:1px solid #b9c0d8;border-radius:8px;padding:8px 18px;font-size:15px;cursor:pointer;font-family:inherit}
+</style></head><body><main>
+<div class="page">
+ <div><b>Function name:</b> <i>fullName</i></div>
+ <div><b>Inputs:</b></div>
+ <div class="ind"><i class="v">fName</i>: the first name of a person.</div>
+ <div class="ind"><i class="v">lName</i>: the last name of the person.</div>
+ <div><b>Output:</b></div>
+ <div class="ind"><span id="ovar"><i class="v" id="ovi">fullName</i>: </span><span>The full name of the person</span></div>
+ <div><b>Side effect:</b> none</div>
+ <div id="plh" class="hide"><b>plan:</b></div>
+ <div id="pll" class="ind hide"><i class="v" id="pv">fullName =</i> <i>concatenateName(concatenateName(fName, &ldquo; &rdquo;), lName)</i></div>
+</div>
+<div id="ctl"><button id="rs">Replay</button></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let timers=[];
+const at=(ms,f)=>timers.push(setTimeout(f,ms));
+const flash=id=>{const e=$(id);e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash')};
+function reset(){timers.forEach(clearTimeout);timers=[];
+ $('ovar').classList.remove('show');
+ ['plh','pll'].forEach(id=>$(id).classList.add('hide'));
+ ['ovi','pv'].forEach(id=>$(id).classList.remove('flash'))}
+function run(){reset();
+ at(1200,()=>{$('ovar').classList.add('show');flash('ovi')});
+ at(3500,()=>$('plh').classList.remove('hide'));
+ at(4000,()=>{$('pll').classList.remove('hide');flash('pv')})}
+$('rs').onclick=run;run();
+</script></body></html>
