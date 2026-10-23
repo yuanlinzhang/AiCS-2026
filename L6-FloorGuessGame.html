@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess Floor Game</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f7f7f5;--fg:#1c1c1a;--card:#fff;--accent:#2f6fed;--muted:#6b6b66}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--fg:#f0f0ec;--card:#222220;--accent:#6c9bff;--muted:#a0a09a}}
+:root[data-theme="dark"]{--bg:#161614;--fg:#f0f0ec;--card:#222220;--accent:#6c9bff;--muted:#a0a09a}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border-radius:16px;padding:28px;max-width:420px;width:100%;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+h1{font-size:1.3rem;margin:0 0 8px}
+p{margin:8px 0;color:var(--muted)}
+.q{font-size:1.4rem;color:var(--fg);margin:20px 0;font-weight:600}
+button{font:inherit;font-size:1.05rem;padding:12px 28px;margin:6px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Guess Floor Game</h1>
+  <p id="info">Think of a number from 1 to 1000. I’ll guess it with yes/no questions.</p>
+  <div class="q" id="q"></div>
+  <div id="btns"></div>
+</div>
+<script>
+var lo, hi, n;
+function render(text, info, buttons){
+  document.getElementById('q').textContent = text;
+  document.getElementById('info').textContent = info;
+  var b = document.getElementById('btns'); b.innerHTML = '';
+  buttons.forEach(function(x){
+    var el = document.createElement('button');
+    el.textContent = x[0]; if(x[2]) el.className = 'alt';
+    el.onclick = x[1]; b.appendChild(el);
+  });
+}
+function start(){ lo = 1; hi = 1000; n = 0; ask(); }
+function ask(){
+  if(lo === hi){
+    render('Your number is ' + lo + '!', 'Found in ' + n + ' questions.', [['Play again', start]]);
+    return;
+  }
+  var mid = Math.floor((lo + hi) / 2); n++;
+  render('Is your number greater than ' + mid + '?',
+    'Question ' + n + ' · possible range: ' + lo + '–' + hi,
+    [['Yes', function(){ lo = mid + 1; ask(); }],
+     ['No',  function(){ hi = mid; ask(); }],
+     ['Start over', start, true]]);
+}
+render('', 'Think of a number from 1 to 1000. I’ll guess it with yes/no questions.', [['Start', start]]);
+</script>
+</body>
+</html>
