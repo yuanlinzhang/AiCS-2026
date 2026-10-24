@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess Floor: How It Works</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f7f7f5;--fg:#1c1c1a;--card:#fff;--muted:#6b6b66;--accent:#2f6fed;--off:#d9d9d4;--hi:#ffd54a;--ok:#2e9e5b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--fg:#f0f0ec;--card:#222220;--muted:#a0a09a;--accent:#6c9bff;--off:#34342f;--hi:#b58a00;--ok:#3fbf75}}
+:root[data-theme="dark"]{--bg:#161614;--fg:#f0f0ec;--card:#222220;--muted:#a0a09a;--accent:#6c9bff;--off:#34342f;--hi:#b58a00;--ok:#3fbf75}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:12px}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:1.15rem;margin:4px 0 10px}
+.main{display:flex;gap:12px;flex-wrap:wrap}
+.bld{flex:1 1 260px;display:flex;flex-direction:column-reverse;gap:4px;background:var(--card);padding:10px;border-radius:12px}
+.fl{display:flex;align-items:center;gap:8px;height:30px;padding:0 8px;border-radius:6px;background:var(--bg);border:2px solid transparent;transition:all .5s}
+.fl b{width:22px}
+.fl.off{background:var(--off);opacity:.45}
+.fl.m{border-color:var(--hi);background:var(--hi);color:#111}
+.fl.ans{background:var(--ok);color:#fff;transform:scale(1.04)}
+.tag{font-size:.75rem;padding:1px 7px;border-radius:10px;color:#fff;background:var(--accent)}
+.tag.h{background:#c4455a}.tag.mm{background:#b58a00}
+.side{flex:1 1 240px;display:flex;flex-direction:column;gap:10px}
+.box{background:var(--card);border-radius:12px;padding:12px}
+.v{font-family:ui-monospace,Menlo,monospace;font-size:1.05rem;margin:3px 0}
+.chg{background:var(--hi);color:#111;border-radius:6px;padding:2px 6px}
+.chg s{opacity:.6}
+.d{font-size:.8rem;color:var(--muted);font-family:system-ui}
+.q{font-size:1.15rem;font-weight:600;min-height:1.5em}
+.a{font-size:1.4rem;font-weight:700;color:var(--accent);min-height:1.6em}
+.cap{color:var(--muted);min-height:3em;font-size:.95rem}
+button{font:inherit;padding:10px 22px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer}
+label{font-size:.85rem;color:var(--muted);margin-left:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Guess the Floor: how it works</h1>
+<div class="main">
+  <div class="bld" id="bld"></div>
+  <div class="side">
+    <div class="box" id="vars"></div>
+    <div class="box"><div class="q" id="q"></div><div class="a" id="a"></div></div>
+    <div class="box cap" id="cap">Press Play. Turn your sound on.</div>
+    <div><button id="go">▶ Play</button><label><input type="checkbox" id="mute"> Mute voice</label><label>Speed <select id="spd"><option value="0.6">0.6×</option><option value="0.8">0.8×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
+  </div>
+</div>
+</div>
+<script>
+var s, token = 0;
+function reset(){ s = {lpf:null,hpf:null,m:null,q:'',a:'',cap:'',fin:false,show:false,sec:false}; }
+var S = [
+ {p:1500, say:"This building has ten floors. Assume the secret floor is eight. We will pretend we don’t know it, and try to find it by asking yes or no questions.", f:function(){s.show=true;s.sec=true;s.cap='We assume the secret floor is 8, and we try to find it.';}},
+ {say:"Introduce two variables. L P F is the lowest possible floor. H P F is the highest possible floor.", f:function(){s.lpf=1;s.hpf=10;s.cap='Variables introduced.';}},
+ {say:"At the beginning, L P F is one and H P F is ten.", f:function(){s.cap='lpf = 1, hpf = 10';}},
+ {p:2500, say:"Now I find the middle floor, m. The middle is roughly the lowest possible floor plus the highest possible floor, then divided by two. Here, m is five. Is your floor above floor five?", f:function(){s.chg=null;s.m=5;s.q='Is your floor above floor 5?';s.a='';s.cap='m = (1 + 10) ÷ 2 = 5.5, rounded down to 5';}},
+ {p:2500, say:"Since the secret floor is eight, and eight is above five, the answer is Yes. The floor is above m, so m itself is ruled out too. That is why we update the lowest possible floor to m plus one. L P F changes from one to six.", f:function(){s.a='Yes (8 is above 5)';s.chg={n:'lpf',o:1};s.lpf=6;s.m=null;s.cap='Yes: floor is above m, so m is ruled out. lpf = m + 1 = 6';}},
+ {p:2500, say:"Now the middle again: roughly the lowest possible floor plus the highest possible floor, divided by two. Here, m is eight. Is your floor above floor eight?", f:function(){s.chg=null;s.m=8;s.q='Is your floor above floor 8?';s.a='';s.cap='m = (6 + 10) ÷ 2 = 8';}},
+ {p:2500, say:"Since the secret floor is eight, and eight is not above eight, the answer is No. The floor is not above m, but it could be m itself, so m stays possible. That is why we update the highest possible floor to m, not m plus one. H P F changes from ten to eight.", f:function(){s.a='No (8 is not above 8)';s.chg={n:'hpf',o:10};s.hpf=8;s.m=null;s.cap='No: floor could be m itself, so m stays. hpf = m = 8';}},
+ {p:2500, say:"Now the middle once more: roughly lpf plus hpf, divided by two. Here, m is seven. Is your floor above floor seven?", f:function(){s.chg=null;s.m=7;s.q='Is your floor above floor 7?';s.a='';s.cap='m = (6 + 8) ÷ 2 = 7';}},
+ {p:2500, say:"Since the secret floor is eight, and eight is above seven, the answer is Yes. The floor is above m, so m is ruled out, and the new lowest possible floor is m plus one. L P F changes from six to eight.", f:function(){s.a='Yes (8 is above 7)';s.chg={n:'lpf',o:6};s.lpf=8;s.m=null;s.cap='Yes: floor is above m, so m is ruled out. lpf = m + 1 = 8';}},
+ {say:"Now the lowest possible floor and the highest possible floor are equal. Only one floor is left.", f:function(){s.chg=null;s.q='';s.a='';s.cap='lpf = hpf = 8. Stop.';}},
+ {say:"Your floor is eight! Each question cut the possibilities in half, so we needed only three questions.", f:function(){s.fin=true;s.q='Your floor is 8!';s.cap='Found in 3 questions. Repeat until lpf equals hpf: that is binary search.';}}
+];
+function render(){
+  var b = document.getElementById('bld'); b.innerHTML = '';
+  for(var f=1; f<=10; f++){
+    var r = document.createElement('div'), c = 'fl';
+    if(s.show){
+      if(s.lpf!==null && (f<s.lpf || f>s.hpf)) c += ' off';
+      if(s.m===f) c += ' m';
+      if(s.fin && f===8) c += ' ans';
+    }
+    r.className = c;
+    var h = '<b>'+f+'</b>';
+    if(s.show){
+      if(s.lpf===f) h += '<span class="tag">lpf</span>';
+      if(s.hpf===f) h += '<span class="tag h">hpf</span>';
+      if(s.m===f) h += '<span class="tag mm">m</span>';
+      if(s.sec && !s.fin && f===8) h += '<span class="tag" style="background:#2e9e5b">secret</span>';
+    }
+    r.innerHTML = h; b.appendChild(r);
+  }
+  var v = '';
+  if(s.lpf!==null){
+    v += '<div class="v"><span class="'+(s.chg&&s.chg.n==='lpf'?'chg':'')+'">lpf = '+val('lpf')+'</span></div><div class="d">the lowest possible floor</div>';
+    v += '<div class="v"><span class="'+(s.chg&&s.chg.n==='hpf'?'chg':'')+'">hpf = '+val('hpf')+'</span></div><div class="d">the highest possible floor</div>';
+    v += '<div class="v">m = '+(s.m===null?'?':s.m)+'</div><div class="d">the middle floor</div>';
+  } else v = '<div class="d">Variables will appear here.</div>';
+  document.getElementById('vars').innerHTML = v;
+  document.getElementById('q').textContent = s.q;
+  document.getElementById('a').textContent = s.a;
+  document.getElementById('cap').textContent = s.cap;
+}
+function val(n){ return (s.chg && s.chg.n===n) ? '<s>'+s.chg.o+'</s> → '+s[n] : s[n]; }
+function pickVoice(){
+  var vs = window.speechSynthesis ? speechSynthesis.getVoices() : [], en = vs.filter(function(v){return /^en/i.test(v.lang);});
+  var best = en.filter(function(v){return /natural|google|samantha|aria|jenny|enhanced/i.test(v.name);});
+  return (best[0] || en[0] || null);
+}
+function say(text, tk){
+  return new Promise(function(done){
+    var fin = false;
+    function end(){ if(!fin){ fin = true; setTimeout(done, 700); } }
+    var sp = parseFloat(document.getElementById('spd').value) || 1;
+    var ms = Math.max(2500, text.length*70) / sp;
+    if(document.getElementById('mute').checked || !window.speechSynthesis){ setTimeout(end, ms); return; }
+    try{
+      var u = new SpeechSynthesisUtterance(text), v = pickVoice();
+      if(v) u.voice = v; u.rate = 0.95*sp; u.onend = end; u.onerror = end;
+      speechSynthesis.speak(u);
+      setTimeout(end, ms + 6000);
+    }catch(e){ setTimeout(end, ms); }
+  });
+}
+async function play(){
+  var tk = ++token;
+  if(window.speechSynthesis) speechSynthesis.cancel();
+  reset(); render();
+  document.getElementById('go').textContent = '↻ Replay';
+  for(var i=0; i<S.length; i++){
+    if(tk !== token) return;
+    S[i].f(); render();
+    await say(S[i].say, tk);
+    if(S[i].p) await new Promise(function(r){ setTimeout(r, S[i].p/(parseFloat(document.getElementById('spd').value)||1)); });
+  }
+}
+document.getElementById('go').onclick = play;
+reset(); render();
+</script>
+</body>
+</html>
